@@ -1,5 +1,7 @@
 const dotenv = require('dotenv');
-dotenv.config();
+const path = require('path');
+// Load env from the server folder regardless of process.cwd()
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 module.exports = {
   port: process.env.PORT || 4000,
@@ -12,4 +14,3 @@ module.exports = {
     callbackPath: process.env.GOOGLE_CALLBACK_PATH || '/auth/google/callback',
   },
 };
-

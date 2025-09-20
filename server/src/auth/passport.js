@@ -5,6 +5,12 @@ const User = require('../models/User');
 const config = require('../config');
 
 // Configure Google OAuth strategy
+if (!config.google.clientID || !config.google.clientSecret) {
+  throw new Error(
+    'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET. Set them in server/.env (see server/.env.example).'
+  );
+}
+
 passport.use(
   new GoogleStrategy(
     {
@@ -25,15 +31,17 @@ passport.use(
         let user = null;
 
         if (email) {
+          // Upsert by email; always set current profile data
           user = await User.findOneAndUpdate(
             { email },
-            { $setOnInsert: userData, $set: { googleId: profile.id, photo: userData.photo, name: userData.name } },
+            { $set: { googleId: profile.id, photo: userData.photo, name: userData.name } },
             { new: true, upsert: true }
           );
         } else {
+          // Upsert by Google ID when email not provided by Google
           user = await User.findOneAndUpdate(
             { googleId: profile.id },
-            { $setOnInsert: userData, $set: { photo: userData.photo, name: userData.name } },
+            { $set: { photo: userData.photo, name: userData.name } },
             { new: true, upsert: true }
           );
         }
@@ -53,4 +61,3 @@ passport.use(
 );
 
 module.exports = passport;
-

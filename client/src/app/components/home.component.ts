@@ -8,37 +8,7 @@ import { AuthService } from '../services/auth.service';
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="container">
-      <header class="header">
-        <h1>Carpool</h1>
-        <button *ngIf="!auth.isAuthenticated()" (click)="auth.loginWithGoogle()">Login with Google</button>
-        <span *ngIf="auth.isAuthenticated()">Logged in</span>
-      </header>
-
-      <section class="search">
-        <h3>Find a ride</h3>
-        <form (ngSubmit)="search()">
-          <input [(ngModel)]="from" name="from" placeholder="From" />
-          <input [(ngModel)]="to" name="to" placeholder="To" />
-          <input [(ngModel)]="date" name="date" type="date" />
-          <button type="submit">Search</button>
-        </form>
-      </section>
-
-      <section class="results">
-        <h3>Results</h3>
-        <div *ngIf="rides.length === 0">No rides yet</div>
-        <ul>
-          <li *ngFor="let r of rides">
-            <strong>{{ r.from }} → {{ r.to }}</strong>
-            on {{ r.date | date:'mediumDate' }} | seats: {{ r.seats }} | ${{ r.price }}
-            <div>Driver: {{ r.driver?.name }}</div>
-          </li>
-        </ul>
-      </section>
-    </div>
-  `,
+  templateUrl: './home.component.html',
   styles: [
     `.container{max-width:800px;margin:0 auto;padding:16px}`,
     `.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}`,
