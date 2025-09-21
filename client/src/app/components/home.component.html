@@ -1,8 +1,15 @@
 <div class="container">
   <header class="header">
     <h1>Carpool</h1>
-    <button *ngIf="!auth.isAuthenticated()" (click)="auth.loginWithGoogle()">Login with Google</button>
-    <span *ngIf="auth.isAuthenticated()">Logged in</span>
+    <ng-container *ngIf="auth.isAuthenticated(); else loginActions">
+      <div class="user-actions">
+        <span class="subtle">Logged in</span>
+        <button type="button" (click)="handleLogout()">Logout</button>
+      </div>
+    </ng-container>
+    <ng-template #loginActions>
+      <button (click)="auth.loginWithGoogle()">Login with Google</button>
+    </ng-template>
   </header>
 
   <section class="search">
@@ -20,10 +27,100 @@
     <div *ngIf="rides.length === 0">No rides yet</div>
     <ul>
       <li *ngFor="let r of rides">
-        <strong>{{ r.from }} → {{ r.to }}</strong>
-        on {{ r.date | date: 'mediumDate' }} | seats: {{ r.seats }} | ${{ r.price }}
+        <strong>{{ r.from }} -> {{ r.to }}</strong>
+        on {{ r.date | date: 'mediumDate' }} | seats: {{ r.seats }} (remaining {{ r.remainingSeats }}) | ${{ r.price }}
         <div>Driver: {{ r.driver?.name }}</div>
+        <div class="ride-actions" *ngIf="auth.isAuthenticated()">
+          <button
+            type="button"
+            (click)="requestSeat(r)"
+            [disabled]="shouldDisablePassengerRequest(r)"
+          >
+            {{ getPassengerRequestButtonLabel(r) }}
+          </button>
+          <span
+            class="ride-feedback"
+            [class.success]="requestStatus[r._id] === 'success' && !r.myRequest"
+            [class.error]="requestStatus[r._id] === 'error'"
+            *ngIf="requestMessage[r._id]"
+          >
+            {{ requestMessage[r._id] }}
+          </span>
+          <div class="ride-status" *ngIf="r.myRequest">
+            <span class="badge" [ngClass]="r.myRequest.status">{{ r.myRequest.status }}</span>
+            <span class="status-text">{{ passengerStatusMessages[r.myRequest.status] }}</span>
+          </div>
+        </div>
+        <div class="ride-actions" *ngIf="!auth.isAuthenticated()">
+          <small>Login to request a seat.</small>
+        </div>
       </li>
     </ul>
+  </section>
+
+  <section class="driver-section" *ngIf="auth.isAuthenticated()">
+    <div class="driver-header">
+      <h3>Your ride requests</h3>
+      <button type="button" (click)="loadMyRides()" [disabled]="myRidesLoading">
+        {{ myRidesLoading ? 'Refreshing...' : 'Refresh' }}
+      </button>
+    </div>
+    <div *ngIf="myRidesError" class="driver-error">{{ myRidesError }}</div>
+    <div *ngIf="myRidesLoading" class="subtle">Loading...</div>
+    <div *ngIf="!myRidesLoading && !myRidesError && myRides.length === 0" class="empty-state">
+      No seat requests yet.
+    </div>
+    <div *ngFor="let ride of myRides" class="ride-card">
+      <div class="ride-card-header">
+        <strong>{{ ride.from }} -> {{ ride.to }}</strong>
+        <span>on {{ ride.date | date: 'mediumDate' }}</span>
+      </div>
+      <div class="ride-card-meta">
+        Seats: {{ ride.seats }} | Remaining: {{ ride.remainingSeats }} | ${{ ride.price }}
+      </div>
+      <div *ngIf="ride.requests.length === 0" class="empty-state">No requests for this ride yet.</div>
+      <ul class="request-list" *ngIf="ride.requests.length">
+        <li *ngFor="let req of ride.requests" class="request-item">
+          <div class="request-info">
+            <div>
+              <strong>{{ req.passenger?.name || 'Passenger' }}</strong>
+              <div class="subtle" *ngIf="req.passenger?.email">{{ req.passenger?.email }}</div>
+            </div>
+            <span class="badge" [ngClass]="req.status">{{ req.status }}</span>
+          </div>
+          <div>Seats requested: {{ req.seats }}</div>
+          <div *ngIf="req.message">Message: {{ req.message }}</div>
+          <div class="request-controls">
+            <ng-container *ngIf="req.status === 'pending'; else resolvedTpl">
+              <button
+                type="button"
+                (click)="updateRequestStatus(ride, req, 'approved')"
+                [disabled]="requestActionStatus[req.key] === 'loading'"
+              >
+                {{ requestActionStatus[req.key] === 'loading' ? 'Saving...' : 'Approve' }}
+              </button>
+              <button
+                type="button"
+                (click)="updateRequestStatus(ride, req, 'rejected')"
+                [disabled]="requestActionStatus[req.key] === 'loading'"
+              >
+                Reject
+              </button>
+            </ng-container>
+            <ng-template #resolvedTpl>
+              <span class="resolved-label">Request {{ req.status }}</span>
+            </ng-template>
+            <span
+              class="ride-feedback"
+              [class.success]="requestActionStatus[req.key] === 'success'"
+              [class.error]="requestActionStatus[req.key] === 'error'"
+              *ngIf="requestActionMessage[req.key]"
+            >
+              {{ requestActionMessage[req.key] }}
+            </span>
+          </div>
+        </li>
+      </ul>
+    </div>
   </section>
 </div>

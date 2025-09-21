@@ -24,8 +24,12 @@ export class AuthService {
     localStorage.removeItem(this.tokenKey);
   }
 
+  logout() {
+    this.clearToken();
+    this.router.navigateByUrl('/');
+  }
+
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
 }
-

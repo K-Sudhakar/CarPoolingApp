@@ -13,4 +13,17 @@ module.exports = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackPath: process.env.GOOGLE_CALLBACK_PATH || '/auth/google/callback',
   },
+  notifications: {
+    email: {
+      enabled: process.env.NOTIFY_EMAIL_ENABLED === 'true',
+      from: process.env.NOTIFY_EMAIL_FROM,
+      transport: {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        secure: process.env.SMTP_SECURE === 'true',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    },
+  },
 };
