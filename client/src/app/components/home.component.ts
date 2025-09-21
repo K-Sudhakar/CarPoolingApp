@@ -1,6 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 import {
   ApiService,
   Ride,
@@ -18,39 +25,51 @@ type DriverRide = Omit<Ride, 'requests' | 'myRequest'> & { requests: DriverRideR
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatToolbarModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule, MatChipsModule, MatDividerModule],
   templateUrl: './home.component.html',
   styles: [
-    `.container{max-width:800px;margin:0 auto;padding:16px}`,
-    `.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}`,
-    `.search form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}`,
-    `input{padding:8px;border:1px solid #ccc;border-radius:4px}`,
-    `button{padding:8px 12px}`,
-    `.user-actions{display:flex;align-items:center;gap:8px}`,
-    `.ride-actions{margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}`,
-    `.ride-feedback{font-size:0.9rem}`,
-    `.ride-feedback.error{color:#c0392b}`,
-    `.ride-feedback.success{color:#1e8449}`,
-    `.ride-status{display:flex;flex-direction:column;gap:2px}`,
-    `.status-text{font-size:0.85rem;color:#555}`,
-    `.driver-section{margin-top:32px}`,
-    `.driver-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}`,
-    `.ride-card{border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:12px}`,
-    `.ride-card-header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}`,
-    `.ride-card-meta{margin-top:4px;font-size:0.9rem;color:#555}`,
-    `.request-list{list-style:none;padding:0;margin:12px 0 0}`,
-    `.request-item{padding:12px 0;border-top:1px solid #eee;display:flex;flex-direction:column;gap:4px}`,
-    `.request-item:first-child{border-top:none}`,
-    `.request-info{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}`,
-    `.subtle{color:#666;font-size:0.85rem}`,
-    `.badge{padding:2px 8px;border-radius:999px;font-size:0.75rem;text-transform:capitalize;background:#e5e7eb}`,
-    `.badge.pending{background:#f9e79f}`,
-    `.badge.approved{background:#d4efdf}`,
-    `.badge.rejected{background:#f5b7b1}`,
-    `.request-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}`,
-    `.resolved-label{font-size:0.85rem;color:#555}`,
-    `.empty-state{color:#666;font-size:0.9rem}`,
-    `.driver-error{color:#c0392b;font-size:0.9rem;margin-bottom:12px}`,
+    `.app-shell{display:flex;flex-direction:column;min-height:100vh;background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,247,251,0.9));}`,
+    `.app-toolbar{padding:0 24px;}`,
+    `.app-title{font-weight:600;font-size:1.4rem;}`,
+    `.toolbar-spacer{flex:1 1 auto;}`,
+    `.user-actions{display:flex;align-items:center;gap:12px;}`,
+    `.content{flex:1;padding:32px 16px;max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:24px;}`,
+    `.search-card,.results-card,.driver-card{border-radius:16px;overflow:hidden;}`,
+    `.search-form{display:flex;flex-direction:column;gap:16px;}`,
+    `.search-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}`,
+    `.search-actions{display:flex;justify-content:flex-end;}`,
+    `.rides-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}`,
+    `.ride-card{border-radius:16px;display:flex;flex-direction:column;gap:8px;}`,
+    `.ride-meta{margin-bottom:8px;}`,
+    `.meta-chip-set{display:flex;flex-wrap:wrap;gap:8px;}`,
+    `.meta-chip-set mat-chip{font-weight:500;}`,
+    `.badge-chip{background-color:#edf2ff;color:#1f2933;}`,
+    `.badge-chip.low{background-color:#fde68a;color:#92400e;}`,
+    `.badge-chip.pending{background-color:#fde68a;color:#92400e;}`,
+    `.badge-chip.approved{background-color:#dcfce7;color:#166534;}`,
+    `.badge-chip.rejected{background-color:#fee2e2;color:#b91c1c;}`,
+    `.ride-driver{margin-top:4px;}`,
+    `.ride-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px;}`,
+    `.inline-feedback{font-size:0.85rem;}`,
+    `.inline-feedback.error{color:#c62828;}`,
+    `.inline-feedback.success{color:#2e7d32;}`,
+    `.status-wrapper{display:flex;align-items:center;gap:8px;}`,
+    `.status-text{font-size:0.85rem;color:#4b5563;}`,
+    `.login-prompt{padding:16px;}`,
+    `.empty-state{padding:24px;text-align:center;color:#6b7280;}`,
+    `.driver-actions{display:flex;justify-content:flex-end;margin-bottom:16px;}`,
+    `.driver-rides{display:flex;flex-direction:column;gap:16px;}`,
+    `.driver-ride-card{border-radius:16px;}`,
+    `.request-list{display:flex;flex-direction:column;gap:12px;margin-top:16px;}`,
+    `.request-item{border:1px solid #e0e7ff;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;}`,
+    `.request-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}`,
+    `.request-name{font-weight:600;}`,
+    `.driver-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;}`,
+    `.resolved-label{font-size:0.9rem;color:#4b5563;}`,
+    `.driver-error{color:#c62828;margin-bottom:12px;}`,
+    `.subtle{color:#6b7280;font-size:0.9rem;}`,
+    `.content section mat-card-header{align-items:flex-start;}`,
+    `@media (max-width:600px){.content{padding:24px 12px;}.ride-actions{padding:16px 0;}.driver-actions{justify-content:stretch;}.driver-actions button{width:100%;}}`,
   ],
 })
 export class HomeComponent implements OnInit {
@@ -325,3 +344,4 @@ export class HomeComponent implements OnInit {
     this.requestActionMessage = {};
   }
 }
+

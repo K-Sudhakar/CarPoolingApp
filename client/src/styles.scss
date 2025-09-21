@@ -1,1 +1,34 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+@include mat.core();
+
+$carpool-theme: mat.define-theme((
+  color: (
+    primary: mat.$blue-palette,
+    tertiary: mat.$rose-palette,
+  ),
+));
+
+@include mat.all-component-themes($carpool-theme);
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  background-color: #f5f7fb;
+  color: #1f2933;
+}
+
+.mat-app-background {
+  background-color: transparent;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
