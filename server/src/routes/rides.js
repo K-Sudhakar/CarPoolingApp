@@ -284,7 +284,30 @@ router.patch('/:id/requests/:requestId', authRequired, async (req, res) => {
   }
 });
 
+
+// Delete a ride (driver only)
+router.delete('/:id', authRequired, async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id).populate('driver', '_id');
+    if (!ride) {
+      return res.status(404).json({ error: 'Ride not found' });
+    }
+
+    const driverId = getDocumentId(ride.driver);
+    if (!driverId || driverId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the driver can delete this ride' });
+    }
+
+    await Ride.deleteOne({ _id: ride.id });
+
+    return res.json({ rideId: ride.id, success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete ride' });
+  }
+});
+
 module.exports = router;
+
 
 
 

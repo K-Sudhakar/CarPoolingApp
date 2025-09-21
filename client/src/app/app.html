@@ -1,5 +1,5 @@
-<nav class="nav">
-  <a routerLink="/">Home</a>
-  <a routerLink="/offer">Offer a ride</a>
+<nav class="global-nav">
+  <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+  <a routerLink="/offer" routerLinkActive="active">Offer a ride</a>
 </nav>
 <router-outlet />

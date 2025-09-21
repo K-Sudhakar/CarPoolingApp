@@ -1,14 +1,31 @@
 <div class="app-shell">
   <mat-toolbar color="primary" class="app-toolbar mat-elevation-z4">
-    <span class="app-title">Carpool</span>
+    <div class="brand">
+      <span class="app-title">RideShare Connect</span>
+      <span class="app-tagline">Smarter shared journeys</span>
+    </div>
     <span class="toolbar-spacer"></span>
     <ng-container *ngIf="auth.isAuthenticated(); else loginActions">
-      <div class="user-actions">
-        <span class="subtle">Logged in</span>
+      <div class="user-actions" *ngIf="user$ | async as user; else loadingUser">
+        <div class="user-avatar" *ngIf="user?.photo">
+          <img [src]="user.photo" alt="{{ user.name || 'User photo' }}" />
+        </div>
+        <div class="user-meta">
+          <span class="user-name">{{ user?.name || 'Traveler' }}</span>
+          <span class="user-email" *ngIf="user?.email">{{ user.email }}</span>
+        </div>
         <button mat-stroked-button color="accent" type="button" (click)="handleLogout()">
           Logout
         </button>
       </div>
+      <ng-template #loadingUser>
+        <div class="user-actions">
+          <span class="subtle">Loading profile...</span>
+          <button mat-stroked-button color="accent" type="button" (click)="handleLogout()">
+            Logout
+          </button>
+        </div>
+      </ng-template>
     </ng-container>
     <ng-template #loginActions>
       <button mat-raised-button color="accent" type="button" (click)="auth.loginWithGoogle()">
@@ -18,8 +35,38 @@
   </mat-toolbar>
 
   <main class="content">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="hero-kicker">Commute together</p>
+        <h1 class="hero-title">Make every ride smarter</h1>
+        <p class="hero-body">
+          Coordinate safe, reliable carpools with colleagues and neighbours. Discover available rides or share your own in just a few clicks.
+        </p>
+        <div class="hero-actions">
+          <button mat-raised-button color="primary" type="button" routerLink="/offer">
+            Offer a ride
+          </button>
+          <button mat-stroked-button color="accent" type="button" (click)="scrollToResults()">
+            Browse rides
+          </button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-card mat-elevation-z4">
+          <div class="hero-card-header">
+            <span class="hero-card-title">Why RideShare Connect?</span>
+          </div>
+          <ul class="hero-card-list">
+            <li>Verified Google profiles keep journeys safe</li>
+            <li>Instant seat requests with real-time updates</li>
+            <li>Smart reminders so no one misses a pickup</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section class="search-section">
-      <mat-card class="search-card mat-elevation-z1">
+      <mat-card class="search-card mat-elevation-z2">
         <mat-card-header>
           <mat-card-title>Find a ride</mat-card-title>
           <mat-card-subtitle>Search by route or date to match a driver</mat-card-subtitle>
@@ -37,7 +84,7 @@
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Date</mat-label>
-                <input matInput [(ngModel)]="date" name="date" type="date" />
+                <input matInput [(ngModel)]="date" name="date" type="date" [min]="minSearchDate" />
               </mat-form-field>
             </div>
             <div class="search-actions">
@@ -50,7 +97,7 @@
       </mat-card>
     </section>
 
-    <section class="results-section">
+    <section class="results-section" id="available-rides">
       <mat-card class="results-card mat-elevation-z1">
         <mat-card-header>
           <mat-card-title>Available rides</mat-card-title>
@@ -61,7 +108,7 @@
               <mat-card class="ride-card mat-elevation-z1" *ngFor="let r of rides">
                 <mat-card-header>
                   <mat-card-title>{{ r.from }} &rarr; {{ r.to }}</mat-card-title>
-                  <mat-card-subtitle>{{ r.date | date: 'mediumDate' }}</mat-card-subtitle>
+                  <mat-card-subtitle>{{ r.date | date: 'medium' }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
                   <div class="ride-meta">
@@ -80,11 +127,7 @@
                   </div>
                 </mat-card-content>
                 <mat-divider></mat-divider>
-                <mat-card-actions
-                  *ngIf="auth.isAuthenticated(); else loginPrompt"
-                  align="end"
-                  class="ride-actions"
-                >
+                <mat-card-actions *ngIf="auth.isAuthenticated(); else loginPrompt" align="end" class="ride-actions">
                   <button
                     mat-raised-button
                     color="primary"
@@ -118,9 +161,7 @@
             </div>
           </ng-container>
           <ng-template #noRides>
-            <div class="empty-state">
-              No rides yet. Try adjusting your search filters.
-            </div>
+            <div class="empty-state">No rides match your search yet. Try broadening your filters.</div>
           </ng-template>
         </mat-card-content>
       </mat-card>
@@ -129,18 +170,12 @@
     <section class="driver-section" *ngIf="auth.isAuthenticated()">
       <mat-card class="driver-card mat-elevation-z1">
         <mat-card-header>
-          <mat-card-title>Your ride requests</mat-card-title>
-          <mat-card-subtitle>Respond to passengers and keep seats flowing</mat-card-subtitle>
+          <mat-card-title>Your driver hub</mat-card-title>
+          <mat-card-subtitle>Manage ride requests and keep travellers updated</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
           <div class="driver-actions">
-            <button
-              mat-stroked-button
-              color="primary"
-              type="button"
-              (click)="loadMyRides()"
-              [disabled]="myRidesLoading"
-            >
+            <button mat-stroked-button color="primary" type="button" (click)="loadMyRides()" [disabled]="myRidesLoading">
               {{ myRidesLoading ? 'Refreshing...' : 'Refresh' }}
             </button>
           </div>
@@ -155,7 +190,7 @@
             <mat-card class="driver-ride-card mat-elevation-z1" *ngFor="let ride of myRides">
               <mat-card-header>
                 <mat-card-title>{{ ride.from }} &rarr; {{ ride.to }}</mat-card-title>
-                <mat-card-subtitle>{{ ride.date | date: 'mediumDate' }}</mat-card-subtitle>
+                <mat-card-subtitle>{{ ride.date | date: 'medium' }}</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
                 <div class="ride-meta">
@@ -221,6 +256,25 @@
                   </div>
                 </div>
               </mat-card-content>
+              <mat-card-actions class="driver-ride-actions">
+                <button
+                  mat-stroked-button
+                  color="warn"
+                  type="button"
+                  (click)="removeRide(ride)"
+                  [disabled]="removalStatus[ride._id] === 'loading'"
+                >
+                  {{ removalStatus[ride._id] === 'loading' ? 'Removing...' : 'Remove ride' }}
+                </button>
+                <span
+                  class="inline-feedback"
+                  [class.success]="removalStatus[ride._id] === 'success'"
+                  [class.error]="removalStatus[ride._id] === 'error'"
+                  *ngIf="removalMessage[ride._id]"
+                >
+                  {{ removalMessage[ride._id] }}
+                </span>
+              </mat-card-actions>
             </mat-card>
           </div>
         </mat-card-content>
@@ -228,4 +282,3 @@
     </section>
   </main>
 </div>
-

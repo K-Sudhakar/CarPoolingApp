@@ -1,0 +1,30 @@
+.global-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 24px;
+  background: linear-gradient(90deg, #0f172a, #1d4ed8);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 10px 30px -20px rgba(15, 23, 42, 0.6);
+}
+
+.global-nav a {
+  color: #e2e8f0;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.global-nav a:hover,
+.global-nav a.active {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.global-nav a:active {
+  transform: translateY(0);
+}

@@ -1,6 +1,8 @@
 const express = require('express');
 const passport = require('../auth/passport');
 const config = require('../config');
+const { authRequired } = require('../middleware/auth');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -20,5 +22,22 @@ router.get(
   }
 );
 
-module.exports = router;
+router.get('/me', authRequired, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('name email photo');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
+    return res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      photo: user.photo,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to load user profile' });
+  }
+});
+
+module.exports = router;

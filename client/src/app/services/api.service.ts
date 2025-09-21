@@ -65,6 +65,11 @@ export interface SeatRequestResponse {
   request: RideRequestDetail;
 }
 
+export interface DeleteRideResponse {
+  rideId: string;
+  success: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private base = 'http://localhost:4000';
@@ -77,6 +82,10 @@ export class ApiService {
 
   createRide(body: any): Observable<Ride> {
     return this.http.post<Ride>(`${this.base}/api/rides`, body);
+  }
+
+  deleteRide(rideId: string): Observable<DeleteRideResponse> {
+    return this.http.delete<DeleteRideResponse>(`${this.base}/api/rides/${rideId}`);
   }
 
   requestSeat(rideId: string, body: SeatRequestPayload = {}): Observable<SeatRequestResponse> {
