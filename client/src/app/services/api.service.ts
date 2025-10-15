@@ -50,6 +50,18 @@ export interface Ride {
   requests?: RideRequestDetail[];
 }
 
+
+export interface RideMessage {
+  id: string;
+  rideId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  sender?: RidePassenger | null;
+  isMine?: boolean;
+}
+
+
 export interface SeatRequestPayload {
   seats?: number;
   message?: string;
@@ -106,4 +118,16 @@ export class ApiService {
       body
     );
   }
+
+  getRideMessages(rideId: string): Observable<RideMessage[]> {
+    return this.http.get<RideMessage[]>(`${this.base}/api/rides/${rideId}/messages`);
+  }
+
+  sendRideMessage(rideId: string, body: string): Observable<RideMessage> {
+    return this.http.post<RideMessage>(
+      `${this.base}/api/rides/${rideId}/messages`,
+      { message: body }
+    );
+  }
 }
+

@@ -1,6 +1,7 @@
 const express = require('express');
 const Ride = require('../models/Ride');
 const { authRequired, optionalAuth } = require('../middleware/auth');
+const Message = require('../models/Message');
 const { notifySeatRequestStatusChange } = require('../services/notifications');
 
 const router = express.Router();
@@ -88,6 +89,50 @@ function formatRideForDriver(rideDoc) {
   ride.requests = rideDoc.requests.map((request) => formatRequest(request));
   delete ride.__v;
   return ride;
+}
+
+function extractRideParticipantIds(rideDoc) {
+  const driverId = getDocumentId(rideDoc.driver);
+  const passengerIds = Array.isArray(rideDoc.requests)
+    ? rideDoc.requests
+        .map((request) => getDocumentId(request.passenger))
+        .filter((id) => !!id)
+    : [];
+  return { driverId, passengerIds };
+}
+
+function userCanAccessRideMessages(rideDoc, userId) {
+  if (!userId) return false;
+  const { driverId, passengerIds } = extractRideParticipantIds(rideDoc);
+  if (driverId && driverId === userId) {
+    return true;
+  }
+  return passengerIds.includes(userId);
+}
+
+function formatMessage(messageDoc, currentUserId = null) {
+  if (!messageDoc) return null;
+  const id = getDocumentId(messageDoc._id || messageDoc.id);
+  const rideId = getDocumentId(messageDoc.ride);
+  const senderId = getDocumentId(messageDoc.sender);
+  let sender = null;
+  if (messageDoc.sender && messageDoc.sender._id) {
+    sender = {
+      id: senderId,
+      name: messageDoc.sender.name,
+      email: messageDoc.sender.email,
+      photo: messageDoc.sender.photo,
+    };
+  }
+  return {
+    id,
+    rideId,
+    senderId,
+    body: messageDoc.body,
+    createdAt: messageDoc.createdAt,
+    sender,
+    isMine: currentUserId ? senderId === currentUserId : false,
+  };
 }
 
 // Search rides
@@ -209,6 +254,77 @@ router.post('/:id/requests', authRequired, async (req, res) => {
   }
 });
 
+// Fetch ride conversation messages
+router.get('/:id/messages', authRequired, async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id)
+      .populate('driver', 'name email photo')
+      .populate('requests.passenger', 'name email photo');
+
+    if (!ride) {
+      return res.status(404).json({ error: 'Ride not found' });
+    }
+
+    if (!userCanAccessRideMessages(ride, req.user.id)) {
+      return res
+        .status(403)
+        .json({ error: 'You are not allowed to view messages for this ride' });
+    }
+
+    const messages = await Message.find({ ride: ride.id })
+      .sort({ createdAt: 1 })
+      .populate('sender', 'name email photo');
+
+    const payload = messages.map((message) => formatMessage(message, req.user.id));
+    res.json(payload);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load ride messages' });
+  }
+});
+
+// Post a message to the ride conversation
+router.post('/:id/messages', authRequired, async (req, res) => {
+  try {
+    const { message: rawMessage, body: rawBody } = req.body || {};
+    const contentSource = typeof rawMessage === 'string' ? rawMessage : rawBody;
+    const messageBody = typeof contentSource === 'string' ? contentSource.trim() : '';
+
+    if (!messageBody) {
+      return res.status(400).json({ error: 'Message body is required' });
+    }
+
+    if (messageBody.length > 1000) {
+      return res.status(400).json({ error: 'Message is too long' });
+    }
+
+    const ride = await Ride.findById(req.params.id)
+      .populate('driver', 'name email photo')
+      .populate('requests.passenger', 'name email photo');
+
+    if (!ride) {
+      return res.status(404).json({ error: 'Ride not found' });
+    }
+
+    if (!userCanAccessRideMessages(ride, req.user.id)) {
+      return res
+        .status(403)
+        .json({ error: 'You are not allowed to send messages for this ride' });
+    }
+
+    const messageDoc = await Message.create({
+      ride: ride.id,
+      sender: req.user.id,
+      body: messageBody,
+    });
+
+    await messageDoc.populate('sender', 'name email photo');
+
+    res.status(201).json(formatMessage(messageDoc, req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
 // Update the status of a seat request (driver only)
 router.patch('/:id/requests/:requestId', authRequired, async (req, res) => {
   try {
@@ -307,6 +423,8 @@ router.delete('/:id', authRequired, async (req, res) => {
 });
 
 module.exports = router;
+
+
 
 
 

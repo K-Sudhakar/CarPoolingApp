@@ -15,6 +15,7 @@ import {
   Ride,
   RideMyRequest,
   RideRequestDetail,
+  RideMessage,
   SeatRequestResponse,
   SeatRequestStatus,
 } from '../services/api.service';
@@ -89,7 +90,21 @@ type DriverRide = Omit<Ride, 'requests' | 'myRequest'> & { requests: DriverRideR
     `.driver-error{color:#c62828;margin-bottom:12px;}`,
     `.subtle{color:#6b7280;font-size:0.9rem;}`,
     `.driver-ride-actions{display:flex;align-items:center;gap:12px;padding:0 16px 16px;}`,
-    `@media (max-width:960px){.hero{flex-direction:column;align-items:flex-start;padding:32px}.hero-visual{width:100%;justify-content:center}.hero-card{max-width:100%;}}`,
+    `.conversation-container{margin:16px 16px 0;padding:16px;border-radius:16px;background:rgba(59,130,246,0.08);display:flex;flex-direction:column;gap:12px;}`,
+    `.conversation-toggle{align-self:flex-start;}`,
+    `.conversation{display:flex;flex-direction:column;gap:12px;}`,
+    `.conversation-feed{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;}`,
+    `.conversation-message{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,0.08);display:flex;flex-direction:column;gap:6px;}`,
+    `.conversation-message.mine{align-self:flex-end;background:#dbeafe;}`,
+    `.conversation-meta{font-size:0.75rem;color:#64748b;display:flex;gap:6px;flex-wrap:wrap;}`,
+    `.conversation-body{font-size:0.95rem;color:#0f172a;white-space:pre-wrap;}`,
+    `.conversation-input{display:flex;flex-direction:column;gap:10px;}`,
+    `.conversation-input textarea{border-radius:12px;border:1px solid rgba(59,130,246,0.25);padding:10px;resize:vertical;min-height:80px;font-family:inherit;}`,
+    `.conversation-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}`,
+    `.conversation-error{color:#b91c1c;font-size:0.85rem;}`,
+    `.conversation-loading{color:#64748b;font-size:0.85rem;}`,
+    `.conversation-empty{color:#6b7280;font-size:0.85rem;}`,
+    `.conversation-refresh{margin-left:auto;}`,    `@media (max-width:960px){.hero{flex-direction:column;align-items:flex-start;padding:32px}.hero-visual{width:100%;justify-content:center}.hero-card{max-width:100%;}}`,
     `@media (max-width:600px){.content{padding:32px 12px 48px}.app-toolbar{padding:0 16px;min-height:64px}.user-actions{gap:8px}.hero-title{font-size:2.2rem}.hero-actions{width:100%}.hero-actions button{flex:1}.driver-actions{justify-content:stretch}.driver-actions button{width:100%;}.ride-actions{padding:16px 0;}}`,
   ],
 })
@@ -109,6 +124,13 @@ export class HomeComponent implements OnInit {
   requestActionMessage: Record<string, string> = {};
   myRidesLoading = false;
   myRidesError = '';
+  rideMessages: Record<string, RideMessage[]> = {};
+  messagesLoading: Record<string, boolean> = {};
+  messagesError: Record<string, string> = {};
+  messageDraft: Record<string, string> = {};
+  messageSendStatus: Record<string, RequestUiState> = {};
+  messageSendMessage: Record<string, string> = {};
+  openConversations: Record<string, boolean> = {};
 
   passengerStatusLabels: Record<SeatRequestStatus, string> = {
     pending: 'Request pending',
@@ -247,6 +269,88 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  canShowPassengerConversation(ride: Ride): boolean {
+    if (!this.auth.isAuthenticated()) {
+      return false;
+    }
+    if (!ride?.myRequest) {
+      return false;
+    }
+    return ride.myRequest.status !== 'rejected';
+  }
+
+  canShowDriverConversation(ride: DriverRide): boolean {
+    if (!Array.isArray(ride?.requests)) {
+      return false;
+    }
+    return ride.requests.some((request) => request && request.status !== 'rejected');
+  }
+
+  isConversationOpen(rideId: string): boolean {
+    return !!this.openConversations[rideId];
+  }
+
+  toggleConversation(rideId: string) {
+    if (!rideId) {
+      return;
+    }
+    const nextState = !this.isConversationOpen(rideId);
+    this.openConversations[rideId] = nextState;
+    if (nextState) {
+      this.messageSendMessage[rideId] = '';
+      if (this.messageSendStatus[rideId] === 'error') {
+        delete this.messageSendStatus[rideId];
+      }
+      this.loadRideMessages(rideId);
+    }
+  }
+
+  refreshConversation(rideId: string) {
+    this.loadRideMessages(rideId, true);
+  }
+
+  sendMessage(rideId: string) {
+    if (!rideId) {
+      return;
+    }
+    const draft = (this.messageDraft[rideId] ?? '').trim();
+    if (!draft) {
+      this.messageSendStatus[rideId] = 'error';
+      this.messageSendMessage[rideId] = 'Enter a message before sending.';
+      return;
+    }
+    if (this.messageSendStatus[rideId] === 'loading') {
+      return;
+    }
+
+    this.messageSendStatus[rideId] = 'loading';
+    this.messageSendMessage[rideId] = '';
+
+    this.api.sendRideMessage(rideId, draft).subscribe({
+      next: (message) => {
+        this.messageDraft[rideId] = '';
+        this.messageSendStatus[rideId] = 'success';
+        this.messageSendMessage[rideId] = '';
+        this.appendRideMessage(rideId, message);
+        setTimeout(() => {
+          if (this.messageSendStatus[rideId] === 'success') {
+            delete this.messageSendStatus[rideId];
+          }
+        }, 2000);
+      },
+      error: (err) => {
+        this.messageSendStatus[rideId] = 'error';
+        this.messageSendMessage[rideId] =
+          (err?.error && typeof err.error.error === 'string' && err.error.error) ||
+          'Failed to send message';
+      },
+    });
+  }
+
+  trackMessage(index: number, message: RideMessage) {
+    return message?.id ?? index;
+  }
+
   removeRide(ride: DriverRide) {
     const rideId = ride?._id;
     if (!rideId) {
@@ -311,6 +415,69 @@ export class HomeComponent implements OnInit {
   private buildDateInputValue(date: Date): string {
     const pad = (value: number) => value.toString().padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  private loadRideMessages(rideId: string, force = false) {
+    if (!rideId) {
+      return;
+    }
+    if (this.messagesLoading[rideId]) {
+      return;
+    }
+    if (!force && this.rideMessages[rideId]) {
+      return;
+    }
+
+    this.messagesLoading[rideId] = true;
+    this.messagesError[rideId] = '';
+
+    this.api.getRideMessages(rideId).subscribe({
+      next: (messages) => {
+        this.messagesLoading[rideId] = false;
+        const sorted = [...messages].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        this.rideMessages[rideId] = sorted;
+        this.messagesError[rideId] = '';
+      },
+      error: (err) => {
+        this.messagesLoading[rideId] = false;
+        this.messagesError[rideId] =
+          (err?.error && typeof err.error.error === 'string' && err.error.error) ||
+          'Failed to load messages';
+      },
+    });
+  }
+
+  private appendRideMessage(rideId: string, message: RideMessage) {
+    const current = this.rideMessages[rideId] ?? [];
+    if (current.some((item) => item.id === message.id)) {
+      return;
+    }
+    const next = [...current, message];
+    next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    this.rideMessages[rideId] = next;
+    this.messagesError[rideId] = '';
+  }
+
+  private clearConversationState(rideId: string) {
+    delete this.rideMessages[rideId];
+    delete this.messagesLoading[rideId];
+    delete this.messagesError[rideId];
+    delete this.messageDraft[rideId];
+    delete this.messageSendStatus[rideId];
+    delete this.messageSendMessage[rideId];
+    delete this.openConversations[rideId];
+  }
+
+  private resetConversationState() {
+    this.rideMessages = {};
+    this.messagesLoading = {};
+    this.messagesError = {};
+    this.messageDraft = {};
+    this.messageSendStatus = {};
+    this.messageSendMessage = {};
+    this.openConversations = {};
   }
 
   private removeRideFromLists(rideId: string) {
@@ -416,6 +583,7 @@ export class HomeComponent implements OnInit {
   private resetPassengerState() {
     this.requestStatus = {};
     this.requestMessage = {};
+    this.resetConversationState();
     this.rides = this.rides.map((ride) => ({ ...ride, myRequest: null }));
   }
 
@@ -427,8 +595,21 @@ export class HomeComponent implements OnInit {
     this.requestActionMessage = {};
     this.removalStatus = {};
     this.removalMessage = {};
+    this.resetConversationState();
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

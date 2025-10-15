@@ -157,6 +157,99 @@
                 <ng-template #loginPrompt>
                   <div class="login-prompt subtle">Login to request a seat.</div>
                 </ng-template>
+                <div
+                  class="conversation-container"
+                  *ngIf="canShowPassengerConversation(r)"
+                >
+                  <button
+                    mat-stroked-button
+                    color="accent"
+                    type="button"
+                    class="conversation-toggle"
+                    (click)="toggleConversation(r._id)"
+                  >
+                    {{ isConversationOpen(r._id) ? 'Hide conversation' : 'Open conversation' }}
+                  </button>
+                  <div *ngIf="isConversationOpen(r._id)" class="conversation">
+                    <div class="conversation-loading" *ngIf="messagesLoading[r._id]">
+                      Loading messages...
+                    </div>
+                    <div class="conversation-error" *ngIf="messagesError[r._id]">
+                      {{ messagesError[r._id] }}
+                      <button
+                        mat-stroked-button
+                        color="primary"
+                        type="button"
+                        class="conversation-refresh"
+                        (click)="refreshConversation(r._id)"
+                        [disabled]="messagesLoading[r._id]"
+                      >
+                        {{ messagesLoading[r._id] ? 'Refreshing...' : 'Retry' }}
+                      </button>
+                    </div>
+                    <div
+                      *ngIf="!messagesLoading[r._id] && !messagesError[r._id]"
+                      class="conversation-feed"
+                    >
+                      <div
+                        *ngIf="!rideMessages[r._id] || rideMessages[r._id].length === 0"
+                        class="conversation-empty"
+                      >
+                        Start coordinating with your driver.
+                      </div>
+                      <div
+                        *ngFor="let message of rideMessages[r._id]; trackBy: trackMessage"
+                        class="conversation-message"
+                        [ngClass]="{ mine: message.isMine }"
+                      >
+                        <div class="conversation-meta">
+                          <span>{{ message.sender?.name || 'Rider' }}</span>
+                          <span>- {{ message.createdAt | date: 'short' }}</span>
+                        </div>
+                        <div class="conversation-body">{{ message.body }}</div>
+                      </div>
+                    </div>
+                    <div class="conversation-input">
+                      <textarea
+                        [(ngModel)]="messageDraft[r._id]"
+                        name="messagePassenger-{{ r._id }}"
+                        placeholder="Share pickup details or ask a question"
+                      ></textarea>
+                      <div class="conversation-actions">
+                        <button
+                          mat-raised-button
+                          color="primary"
+                          type="button"
+                          (click)="sendMessage(r._id)"
+                          [disabled]="messageSendStatus[r._id] === 'loading'"
+                        >
+                          {{ messageSendStatus[r._id] === 'loading' ? 'Sending...' : 'Send message' }}
+                        </button>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          color="accent"
+                          (click)="refreshConversation(r._id)"
+                          [disabled]="messagesLoading[r._id]"
+                        >
+                          {{ messagesLoading[r._id] ? 'Refreshing...' : 'Refresh' }}
+                        </button>
+                        <span
+                          class="conversation-error"
+                          *ngIf="messageSendStatus[r._id] === 'error' && messageSendMessage[r._id]"
+                        >
+                          {{ messageSendMessage[r._id] }}
+                        </span>
+                        <span
+                          class="inline-feedback success"
+                          *ngIf="messageSendStatus[r._id] === 'success'"
+                        >
+                          Sent
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </mat-card>
             </div>
           </ng-container>
@@ -255,6 +348,99 @@
                     </div>
                   </div>
                 </div>
+              <div
+                class="conversation-container"
+                *ngIf="canShowDriverConversation(ride)"
+              >
+                <button
+                  mat-stroked-button
+                  color="accent"
+                  type="button"
+                  class="conversation-toggle"
+                  (click)="toggleConversation(ride._id)"
+                >
+                  {{ isConversationOpen(ride._id) ? 'Hide conversation' : 'Open conversation' }}
+                </button>
+                <div *ngIf="isConversationOpen(ride._id)" class="conversation">
+                  <div class="conversation-loading" *ngIf="messagesLoading[ride._id]">
+                    Loading messages...
+                  </div>
+                  <div class="conversation-error" *ngIf="messagesError[ride._id]">
+                    {{ messagesError[ride._id] }}
+                    <button
+                      mat-stroked-button
+                      color="primary"
+                      type="button"
+                      class="conversation-refresh"
+                      (click)="refreshConversation(ride._id)"
+                      [disabled]="messagesLoading[ride._id]"
+                    >
+                      {{ messagesLoading[ride._id] ? 'Refreshing...' : 'Retry' }}
+                    </button>
+                  </div>
+                  <div
+                    *ngIf="!messagesLoading[ride._id] && !messagesError[ride._id]"
+                    class="conversation-feed"
+                  >
+                    <div
+                      *ngIf="!rideMessages[ride._id] || rideMessages[ride._id].length === 0"
+                      class="conversation-empty"
+                    >
+                      Share pick-up details with your passengers.
+                    </div>
+                    <div
+                      *ngFor="let message of rideMessages[ride._id]; trackBy: trackMessage"
+                      class="conversation-message"
+                      [ngClass]="{ mine: message.isMine }"
+                    >
+                      <div class="conversation-meta">
+                        <span>{{ message.sender?.name || 'Rider' }}</span>
+                        <span>- {{ message.createdAt | date: 'short' }}</span>
+                      </div>
+                      <div class="conversation-body">{{ message.body }}</div>
+                    </div>
+                  </div>
+                  <div class="conversation-input">
+                    <textarea
+                      [(ngModel)]="messageDraft[ride._id]"
+                      name="messageDriver-{{ ride._id }}"
+                      placeholder="Share meeting points or updates"
+                    ></textarea>
+                    <div class="conversation-actions">
+                      <button
+                        mat-raised-button
+                        color="primary"
+                        type="button"
+                        (click)="sendMessage(ride._id)"
+                        [disabled]="messageSendStatus[ride._id] === 'loading'"
+                      >
+                        {{ messageSendStatus[ride._id] === 'loading' ? 'Sending...' : 'Send message' }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        color="accent"
+                        (click)="refreshConversation(ride._id)"
+                        [disabled]="messagesLoading[ride._id]"
+                      >
+                        {{ messagesLoading[ride._id] ? 'Refreshing...' : 'Refresh' }}
+                      </button>
+                      <span
+                        class="conversation-error"
+                        *ngIf="messageSendStatus[ride._id] === 'error' && messageSendMessage[ride._id]"
+                      >
+                        {{ messageSendMessage[ride._id] }}
+                      </span>
+                      <span
+                        class="inline-feedback success"
+                        *ngIf="messageSendStatus[ride._id] === 'success'"
+                      >
+                        Sent
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               </mat-card-content>
               <mat-card-actions class="driver-ride-actions">
                 <button
@@ -282,3 +468,16 @@
     </section>
   </main>
 </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
