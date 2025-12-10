@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
+const path = require('path');
 const passport = require('./auth/passport');
 const config = require('./config');
 
@@ -29,6 +30,13 @@ async function start() {
 
   app.use('/auth', authRoutes);
   app.use('/api/rides', rideRoutes);
+
+  const clientBuildPath = path.join(__dirname, '../../client/dist/client/browser');
+  app.use(express.static(clientBuildPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
 
   app.listen(config.port, () => {
     console.log(`API listening on http://localhost:${config.port}`);
